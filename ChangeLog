@@ -1,0 +1,5 @@
+release 0.2
+- Fixed bug in log2 calculation (log2(1) == 0, not 1).
+- Fixed bug in grid printout (inversion of dimensions).
+- Added more sample environments.
+

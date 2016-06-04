@@ -1,0 +1,94 @@
+AgentWorld
+Developed for COEN 166/266 (Artificial Intelligence) at Santa Clara
+University by Joshua Conner.
+Copyright 2011.  Please do not copy or reuse without permission.
+
+Overview
+~~~~~~~~
+This program is designed to provide a test environment for scheme-based
+agents operating in a virtual world.  For every environment (each file in
+the "Environments" directory is assumed to specify an environment), an
+instance of each of the agents in the "Agents" directory will be invoked,
+and the simulation will run until all agents have died, or the specified
+time has elapsed.  For each simulation that is run, a log file will be
+generated in the "Results" directory.
+
+Environment Files
+~~~~~~~~~~~~~~~~~
+An environment is comprised of the following base variables, each of which are
+integers:
+SIZE-X  The number of columns in the environment.
+SIZE-Y  The number of rows in the environment.
+DEFAULT-ENERGY  The amount of energy each agent should start with.
+SIMULATION-LENGTH  The maximum length of time the simulation will run.
+    The simulation will stop sooner if all agents die before the time is
+    reached.
+
+For each of the above variables, specify VARIABLE: VALUE in the environment
+file.
+
+In addition, an environment can support vegetation.  Eating this vegetation
+can increase energy for an agent.  Vegetation goes through a fixed cycle of
+incubation, followed by blooming.  Eating the plant when it is not blooming
+is of no value to the agent.  When blooming, the energy provided by the
+vegetation changes from one turn to the next.  The locations of vegetation
+are fixed from the start of the simulation to the end.
+
+Vegetation is defined by a "DEFINE VEGETATION" statement.  Using any of the
+following variables thereafter will make those values apply to the
+vegetation being defined:
+NAME  A symbolic name for the vegetation.  Not used at the moment.
+FREQUENCY  The likelihood that vegetation will be assigned to any given
+    empty square at the start of the simulation.
+INCUBATION  The length of time after being eaten (or after finishing blooming
+    if not eaten), before the plant will begin to bloom again.
+BLOOM  A sequence of integers that defines the amount of energy at each
+    turn after the vegetation begins to bloom.  The number of integers given
+    implies how many turns the bloom will last.
+
+Finally, an environment can define one or more predators.  These predators
+wander the virtual world and attack agents.  Predators can only move or
+attack (but not both) only once per turn.  Predators can only attack agents
+that are in locations immediately adjacent to the predator (i.e., N/S/E/W,
+not NE/SE/NW/SW).  Agents have a fixed life span, after which time they re-
+generate in a new location.
+
+Predators are defined using a "DEFINE PREDATOR" statement.  Using any of the
+following variables thereafter will make those values apply to the predator
+being defined:
+NAME  A symbolic name for the predator.  Currently unused.
+DAMAGE  The amount of damage (energy lost) a predator will inflict each time
+    it attacks an agent.
+LIFE-SPAN  The length of time a predator will live before it re-generates
+    in a new location.
+NUM-INSTANCES  How many of these predators will be inserted into the
+    environment.
+
+Agents
+~~~~~~
+Agents, written in scheme, are loaded using the libguile interface.  Each
+subdirectory of the "Agents" directory is assumed to contain a single agent.
+All necessary definitions must be loaded from a central "main.scm" file.
+
+Agents must be able to handle the following calls:
+initialize-agent: invoked before beginning the simulation to allow the agent
+    the chance to initialize as needed.  The user is expected to respond with
+    a string, although the actual value of the string is ignored.
+choose-action: invoked at each turn, with three parameters:
+    - an integer value representing your agent's energy level
+    - a list of events that occurred during the previous turn
+    - a list of percepts of the visible environment
+    An agent is expected to respond with one of the following strings:
+    "STAY": Do nothing
+    "TURN-RIGHT", "TURN-LEFT", "TURN-AROUND": Turn (relative to current
+        orientation)
+    "MOVE-PASSIVE-#": (where # can be 1, 2, or 3) Move in the direction the
+        agent is currently facing, yielding to other agents.
+    "MOVE-AGGRESSIVE-#": Move in the direction the agent is currently facing,
+        fighting with any agents who are also moving aggressively.
+    "EAT-PASSIVE": Eat from vegetation immediately in front of the agent,
+        sharing with other agents who are eating passively and yielding to
+        agents who are eating aggressively.
+    "EAT-AGGRESSIVE": Eat from vegetation immediately in front of the agent,
+        fighting with other agents who are eating aggressively.
+

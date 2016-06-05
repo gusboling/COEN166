@@ -3,12 +3,19 @@
 ;COEN 166
 ;8 June 2016
 
+;-----------------------
+;  PERMANENT VARIABLES
+;-----------------------
+(define last_position '(0 0))
+(define frontier '())
+
 ;-----------------
 ;  API FUNCTIONS
 ;-----------------
 (define (initialize-agent)
  	(begin
-    (display "Initialized!")
+    (display last_position)
+    (display frontier)
 		"MORITURI TE SALUTANT!"
 	)
 ) ;Because why not...
@@ -17,6 +24,8 @@
 (define (choose-action current_energy previous_events percept)
 	(begin
     (display previous_events)
+    (display frontier)
+    (set! frontier (append '(a) frontier))
 		(cond
 			((equal? (get-move1 percept) 'empty) "MOVE-PASSIVE-1")
 			(#t "TURN-RIGHT")

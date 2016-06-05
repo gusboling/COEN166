@@ -22,14 +22,15 @@
 
 ;For now, moves forward 1 space if it can. If it can't, then Agent turns to the right.
 (define (choose-action current_energy previous_events percept)
-	(begin
-    (display previous_events)
-    (display frontier)
-    (set! frontier (append '(a) frontier))
-		(cond
-			((equal? (get-move1 percept) 'empty) "MOVE-PASSIVE-1")
-			(#t "TURN-RIGHT")
-		)
+  (if (not (equal? (get-move1 percept) 'empty)) "TURN-RIGHT"
+    (begin
+      (if (equal? (car previous_events) '(moved 1))
+        (set! last_position ((car last_position) (+ (car (cdr last_position)) 1)))
+        (set! last_position last_position)
+      )
+      (display last_position)
+      "MOVE-PASSIVE-1"
+    )
   )
 )
 

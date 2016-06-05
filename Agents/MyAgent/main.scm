@@ -40,21 +40,34 @@
 ;good move (assuming the target is good, so three assumptions I guess).
 (define (get-frontier percept previous_events frontier) ("NOTHING YET"))
 
+
+;Note here: the y-coordinate for the bottom row should be "1". This is because the space (0,0) is assumed to 
+;be occupied by the Agent. Values passed to y should be between [1,5], inclusive.
 (define (get-row-targets row y)
-	(if (null? row)
-		'()
-		(let
-			(
-				(current (car row))
-				(x (- 6 (length row)))
+
+		(if (not (null? (cdr row)))
+			(let
+				(
+					(current (car row))
+				)
+				(cond
+					((equal? 'empty current) (get-row-targets (cdr row) y))
+					((equal? 'vegetation (car current)) (append (list (list (- (+ 1 y) (length row)) y (car (cdr current)))) (get-row-targets (cdr row) y)))
+					(else (get-row-targets (cdr row) y))
+				)
 			)
-			(cond
-				((equal? 'empty current) (row-targets (cdr row) y))
-				((equal? 'vegetation (car current)) (append (list x y (h-value x y ()))))
-        (#t (row-targets (cdr row) y))
+			(let
+				(
+					(current (car row))
+					(x (- (+ 1 y) (length row)))					
+				)
+				(cond
+					((equal? 'empty current) '())
+					((equal? 'vegetation (car current)) (list (list x y (car (cdr current)))))
+					(else '())
+				)
 			)
-		)
-  )
+		)	
 )
 
 

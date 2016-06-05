@@ -12,13 +12,7 @@
 ;-----------------
 ;  API FUNCTIONS
 ;-----------------
-(define (initialize-agent)
- 	(begin
-    (display last_position)
-    (display frontier)
-		"MORITURI TE SALUTANT!"
-	)
-) ;Because why not...
+(define (initialize-agent) "MORITURI TE SALUTANT!") ;Because why not...
 
 ;For now, moves forward 1 space if it can. If it can't, then Agent turns to the right.
 (define (choose-action current_energy previous_events percept)
@@ -29,7 +23,7 @@
         (set! last_position last_position)
       )
       (display last_position)
-      "MOVE-PASSIVE-1"
+      ("MOVE-PASSIVE-1")
     )
   )
 )

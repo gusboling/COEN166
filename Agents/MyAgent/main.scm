@@ -22,25 +22,96 @@
 			((new_loch (get-new-position previous_events last_position)))
 			
 			(begin
-				(display new_loch)
 				(set! last_position (car new_loch))
+				;SET NEW FRONTIER DOWN HERE.
 			)
 		)
 		(cond
-			((equal? 'empty (get-move1 percept)) "MOVE-PASSIVE-1")
-			(else (turn-right heading))
+			;CONSIDER ADDING FLEEING RESPONSES FOR AGENT AND PREDATOR SIGHTING 
+			((edible? (get-space1 percept)) (eat))
+			((one_away? percept) (s-lunge))
+			((two_away? percept) (m-lunge))
+			((three_away? percept) (l-lunge))
+			((passable? (get-space1 percept)) (s-move)) ;REPLACE WITH: A* SEARCH STEP, AS DICTATED BY (car frontier)))
+			(#t (turn-right heading))
 		)
 	)
 )
 
+;------------------------------
+;  BEHAIVIOR HELPER FUNCTIONS
+;------------------------------  
 (define (turn-right direction)
 	(cond
-		((equal? direction 'N) (begin (set! heading 'E) "TURN-RIGHT"))
-		((equal? direction 'E) (begin (set! heading 'S) "TURN-RIGHT"))
-		((equal? direction 'S) (begin (set! heading 'W) "TURN-RIGHT"))
-		((equal? direction 'W) (begin (set! heading 'N) "TURN-RIGHT"))
+		((equal? direction 'N) (begin (set! heading 'E) (display "Turned Right	") "TURN-RIGHT"))
+		((equal? direction 'E) (begin (set! heading 'S) (display "Turned Right	") "TURN-RIGHT"))
+		((equal? direction 'S) (begin (set! heading 'W) (display "Turned Right	") "TURN-RIGHT"))
+		((equal? direction 'W) (begin (set! heading 'N) (display "Turned Right	") "TURN-RIGHT"))
 	)
 )
+
+(define (turn-left direction)
+	(cond
+		((equal? direction 'N) (begin (set! heading 'W) (display "Turned Left	") "TURN-LEFT"))
+		((equal? direction 'W) (begin (set! heading 'S) (display "Turned Left	") "TURN-LEFT"))
+		((equal? direction 'S) (begin (set! heading 'E) (display "Turned Left	") "TURN-LEFT"))
+		((equal? direction 'E) (begin (set! heading 'N) (display "Turned Left	") "TURN-LEFT")) 
+	)
+)
+
+(define (turn-around direction)
+	(cond
+		((equal? direction 'N) (begin (set! heading 'S) (display "Turned Around	") "TURN-AROUND"))
+		((equal? direction 'S) (begin (set! heading 'N) (display "Turned Around	") "TURN-AROUND"))
+	)
+)
+
+(define (s-move) (begin (display "Small Move	") "MOVE-PASSIVE-1"))
+
+(define (s-lunge) (begin (display "Small Lunge	") "MOVE-AGGRESSIVE-1"))
+
+(define (m-lunge) (begin (display "Medium Lunge	") "MOVE-AGGRESSIVE-2"))
+
+(define (l-lunge) (begin (display "Large Lunge	") "MOVE-AGGRESSIVE-3")) 
+
+(define (eat) (begin (display "Ate	") "EAT-AGGRESSIVE"))
+
+;--------------------------------
+;  ENVIRONMENT HELPER FUNCTIONS
+;--------------------------------
+(define (edible? infront)
+	(if (null? infront) #f 
+		(if (not (pair? infront)) #f
+			(if (and (equal? 'vegetation (car infront)) (> (car (cdr (cdr infront))) 5)) #t #f)
+		)
+	)
+)
+
+(define (passable? space)
+	(if (equal? space 'empty) #t #f)
+)
+
+(define (one_away? percept)
+	(let
+		((sq1 (get-space1 percept)) (sq2 (get-space2 percept)))
+		(if (and (edible? sq2) (passable? sq1)) #t #f) 
+	)
+)
+
+(define (two_away? percept)
+	(let
+		((sq1 (get-space1 percept)) (sq2 (get-space2 percept)) (sq3 (get-space3 percept)))
+		(if (and (and (edible? sq3) (passable? sq2)) (passable? sq1)) #t #f)
+	)
+)
+
+(define (three_away? percept)
+	(let 
+		((sq1 (get-space1 percept)) (sq2 (get-space2 percept)) (sq3 (get-space3 percept)) (sq4 (get-space4 percept)))
+		(if (and (and (and (edible? sq4) (passable? sq3)) (passable? sq2)) (passable? sq1)) #t #f)
+	)
+)
+
 
 
 ;------------------------------
@@ -158,16 +229,21 @@
 )
 
 ;Returns the percept of the space directly in front of the agent.
-(define (get-move1 percept)
+(define (get-space1 percept)
 	(car (cdr (car percept)))
 )
 
 ;Returns the percept of the space one square in front of the agent.
-(define (get-move2 percept)
+(define (get-space2 percept)
 	(car (cdr (cdr (car (cdr percept)))))
 )
 
 ;Returns the percept of the space two squares in front of the agent.
-(define (get-move3 percept)
+(define (get-space3 percept)
 	(car (cdr (cdr (cdr (car (cdr (cdr percept)))))))
+)
+
+;Returns the percept of the space three squares in front of the agent.
+(define (get-space4 percept)
+	(car (cdr (cdr (cdr (cdr (car (cdr (cdr (cdr percept)))))))))
 )

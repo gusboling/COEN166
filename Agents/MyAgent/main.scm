@@ -15,7 +15,14 @@
 ;-----------------
 (define (initialize-agent) "MORITURI TE SALUTANT!") ;Because why not...
 
-;For now, moves forward 1 space if it can. If it can't, then Agent turns to the right.
+;EXPLANATION OF BEHAIVIOR: At the beginning of each turn, the agent's first action is to take in previous events and calculate its present position.
+;It then should update the frontier using the current position, heading, and percept. Next the agent evaluates the percept for several conditions which
+;would induce a reflexive move - such as a edible plant being within 4 spaces or a impassible space in front of the agent. These result in a predefined 
+;action that will address the conditions that gave rise to it. If none of the reflexes are triggered, then the agent uses the frontier to decide on its next
+;course of action.
+;
+;In summary, if it can't take any immediate reflexive action, then it uses an internal model of the environment to navigate to position where the reflexes can
+;take over.
 (define (choose-action current_energy previous_events percept)
 	(begin
 		(let
@@ -26,9 +33,11 @@
 				;SET NEW FRONTIER DOWN HERE.
 			)
 		)
+		(display current_energy)
+		(display "	")
 		(cond
 			;CONSIDER ADDING FLEEING RESPONSES FOR AGENT AND PREDATOR SIGHTING 
-			((edible? (get-space1 percept)) (eat))
+			((edible? (get-space1 percept)) (eat percept))
 			((one_away? percept) (s-lunge))
 			((two_away? percept) (m-lunge))
 			((three_away? percept) (l-lunge))
@@ -74,7 +83,11 @@
 
 (define (l-lunge) (begin (display "Large Lunge	") "MOVE-AGGRESSIVE-3")) 
 
-(define (eat) (begin (display "Ate	") "EAT-AGGRESSIVE"))
+(define (stay) (begin (display "Stayed") "STAY"))
+
+(define (eat percept) (begin (display "Ate ") (display (car (cdr (cdr (get-space1 percept))))) (display "	") "EAT-AGGRESSIVE"))
+
+
 
 ;--------------------------------
 ;  ENVIRONMENT HELPER FUNCTIONS
@@ -118,20 +131,12 @@
 ;  TARGET-BASED A* NAVIGATION
 ;------------------------------
 
-;DEV_NOTE: Here's my $0.02 on this function: this will take an arbitrary coordinate pair, representing a vegetation square on the map
-;as an argument. It will return an action string representing the first step of the most optimal path to get there. Zooming out to big
-;picture here, if used with a function that regularly checks for the best target, then this function will be regularly recalculating
-;the route to the best target, and taking the relevant step in reaching it.
-;
-;Here's what still needs to be done. First it has to get an updated copy of the frontier, which required get-frontier() to be finished.
-;Then it needs two algorithms for calculating X and Y deltas for the target relative to the agent, which will then inform a series of moves
-;and turns to resolve to (0,+-1) or (+-1, 0). At this point, the target vegetation will have been reached, and the frontier will have to be "popped"
-;to reflect depletion. Aformentioned frontier management may or may not be a part of this function.
-(define (get-move percept previous_events)
+;TAKES: UPDATED PERCEPT, UPDATED FRONTIER, UPDATED POSITION
+;RETURNS: AN ACTION-STRING REPRESENTING THE NEXT MOVE NECESSARY TO REACH THE FIRST ELEMENT IN THE FRONTIER.
+(define (get-move percept new_frontier new_position new_heading)
   ("NOTHING FOR NOW!")
 )
 
-;Get-Frontier Function:
 ;TAKES: PERCEPT, LIST OF PREVIOUS EVENTS, OLD FRONTIER
 ;RETURNS: A SORTED LIST OF TARGETS, WITH EACH TARGET OF THE FORM -> (Rating# Abs_X_Coord Abs_Y_Coord Value)
 ;
@@ -139,20 +144,28 @@
 ;the plants won't move (much?) so if I record their position relative to myself, and set that information as a variable,
 ;then I can track them over multiple turns. This makes a couple of assumptions: first that an update algorithm will be
 ;relatively easy to write, and second, that a simple navigation algorithm will be able to turn target data into a
-;good move (assuming the target is good, so three assumptions I guess).
-(define (get-frontier percept previous_events)
+;good move.
+(define (get-new-frontier percept previous_events old_frontier new_heading)
   ("NOTHING FOR NOW!")
+) 
+
+;TAKES: PERCEPT
+;RETURNS: A LIST OF TARGETS IN THE CURRENT PERCEPT, WITH COORDINATES RELATIVE TO THEIR POSITION WITHIN THE PERCEPT AND THE AGENT.
+;
+;DEV_NOTE:The coordinates this returns ARE NOT absolute coordinates suitable for navigation. They are coordinates relative to the agent,
+;which can then be translated into absolute coordinates when combined with the current position and heading.
+(define (get-targets percept)
+	(if (null? percept) '()
+		(append (get-row-targets (car percept) (- 6 (length percept))) (get-targets (cdr percept))) 
+	) 
 )
 
-
-;Get-Row-Targets Function: This function takes a row of the percept, and that row's relative y-coordinate as its
-;arguments. It then returns a list of the vegetation squares within that row of the percept, including their x and y coordinates,
-;as well as the value of the plant.
+;TAKES: A PERCEPT ROW, THE Y-COORDINATE ASSOCIATED WITH THAT ROW
+;RETURNS: A LIST OF TARGETS IN THAT ROW, EACH REPRESENTED AS AN COORDINATE PAIR RELATIVE TO THE AGENT.
 ;
 ;DEV_NOTE: When initiating an outside call to the function, the y-coordinate for the bottom row should be "1".
 ;This is because the space (0,0) is assumed to be occupied by the Agent. Values passed to y should be between [1,5], inclusive.
 (define (get-row-targets row y)
-
 		(if (not (null? (cdr row)))
 			(let
 				(
@@ -160,7 +173,7 @@
 				)
 				(cond
 					((equal? 'empty current) (get-row-targets (cdr row) y))
-					((equal? 'vegetation (car current)) (append (list (list (- (+ 1 y) (length row)) y (car (cdr current)))) (get-row-targets (cdr row) y)))
+					((equal? 'vegetation (car current)) (append (list (list (- (+ 1 y) (length row)) y (car (cdr (cdr current))))) (get-row-targets (cdr row) y)))
 					(else (get-row-targets (cdr row) y))
 				)
 			)
@@ -171,7 +184,7 @@
 				)
 				(cond
 					((equal? 'empty current) '())
-					((equal? 'vegetation (car current)) (list (list x y (car (cdr current)))))
+					((equal? 'vegetation (car current)) (list (list x y (car (cdr (cdr current))))))
 					(else '())
 				)
 			)
@@ -207,6 +220,27 @@
 	)
 )
 
+;TAKES: CURRENT POSITION, CURRENT HEADING, LIST OF TARGETS WITH RELATIVE COORDINATES
+;RETURNS: LIST OF TARGETS WITH ABSOLUTE COORDINATES.
+(define (absolute-location new_position new_heading targets)
+	(if (null? targets) '()
+		(let
+			(
+				(current_x (car new_position))
+				(current_y (car (cdr new_position)))
+				(target_x (car (car targets)))
+				(target_y (car (cdr (car targets))))
+				(target_value (car (cdr (cdr (car targets)))))				
+			)
+			(cond
+				((equal? new_heading 'N) (append (list (+ current_x target_x) (+ current_y target_y) target_value) (absolute-location new_position new_heading (cdr targets))))
+				((equal? new_heading 'S) (append (list (- current_x target_x) (- current_y target_y) target_value) (absolute-location new_position new_heading (cdr targets))))
+				((equal? new_heading 'E) (append (list (+ current_x target_y) (- current_y target_x) target_value) (absolute-location new_position new_heading (cdr targets))))
+				((equal? new_heading 'W) (append (list (- current_x target_y) (+ current_y target_x) target_value) (absolute-location new_position new_heading (cdr targets))))	
+			)
+		)
+	)
+)
 
 ;--------------------------
 ;  MISC. HELPER FUNCTIONS

@@ -21,19 +21,15 @@
 ;action that will address the conditions that gave rise to it. If none of the reflexes are triggered, then the agent uses the frontier to decide on its next
 ;course of action.
 ;
-;In summary, if it can't take any immediate reflexive action, then it uses an internal model of the environment to navigate to position where the reflexes can
-;take over.
+;In summary, if it can't take any immediate reflexive action, then the agent uses an internal model of the environment to navigate to position where the reflexes can
+;take over. This internal model of the environment uses a heuristic to order potential destinations according to their desirability.
 (define (choose-action current_energy previous_events percept)
 	(begin
-		(display (car percept))
-		(display "\n")
 		(let
 			(
 				(new_loch (get-new-position previous_events last_position))
 				(new_frontier (get-new-frontier (get-targets percept) frontier))
-				;(new_frontier '())	
-			)
-			
+			)	
 			(begin
 				(set! last_position (car new_loch))
 				(set! frontier new_frontier)
@@ -47,7 +43,8 @@
 			((one_away? percept) (s-lunge))
 			((two_away? percept) (m-lunge))
 			((three_away? percept) (l-lunge))
-			((passable? (get-space1 percept)) (s-move)) ;REPLACE WITH: A* SEARCH STEP, AS DICTATED BY (car frontier)))
+			;(get-move percept frontier last_position heading) ; A* Search Step. Commented out because I ran out of time debugging it.
+			((passable? (get-space1 percept)) (s-move))
 			(#t (turn-right heading))
 		)
 	)
@@ -140,7 +137,47 @@
 ;TAKES: UPDATED PERCEPT, UPDATED FRONTIER, UPDATED POSITION
 ;RETURNS: AN ACTION-STRING REPRESENTING THE NEXT MOVE NECESSARY TO REACH THE FIRST ELEMENT IN THE FRONTIER.
 (define (get-move percept new_frontier new_position new_heading)
-  ("NOTHING FOR NOW!")
+	(let
+		(
+			(delta_x (- (car new_position) (car (car new_frontier))))
+			(detla_y (- (car new_position) (car (cdr (car new_frontier)))))
+		)
+		(cond
+			((> delta_x 0)
+				(cond
+					((equal? new_heading 'N) "MOVE-PASSIVE-1")
+					((equal? new_heading 'S) "TURN-AROUND")
+					((equal? new_heading 'E) "TURN-LEFT")
+					((equal? new_heading 'W) "TURN-RIGHT")
+				) 
+			)
+			((< delta_x 0)
+				(cond
+					((equal? new_heading 'N) "TURN-AROUND")
+					((equal? new_heading 'S) "MOVE-PASSIVE-1")
+					((equal? new_heading 'E) "TURN-RIGHT")
+					((equal? new_heading 'W) "TURN-LEFT")
+				)
+			)
+			((> delta_y 0)
+				(cond
+					((equal? new_heading 'N) "TURN-LEFT")
+					((equal? new_heading 'S) "TURN-RIGHT")
+					((equal? new_heading 'E) "TURN-AROUND")
+					((equal? new_heading 'W) "MOVE-PASSIVE-1")
+				)
+			)
+			((< delta_y 0)
+				(cond
+					((equal? new_heading 'N) "TURN-RIGHT")
+					((equal? new_heading 'S) "TURN-LEFT")
+					((equal? new_heading 'E) "MOVE-PASSIVE-1")
+					((equal? new_heading 'W) "TURN-AROUND")
+				)
+			)
+			(#t "TURN-RIGHT")
+		)
+	)
 )
 
 ;TAKES: PERCEPT, LIST OF PREVIOUS EVENTS, OLD FRONTIER
@@ -151,9 +188,12 @@
 ;then I can track them over multiple turns. This makes a couple of assumptions: first that an update algorithm will be
 ;relatively easy to write, and second, that a simple navigation algorithm will be able to turn target data into a
 ;good move.
-(define (get-new-frontier horizon old_frontier)
-	(if (null? horizon) old_frontier
-		(get-new-frontier (cdr horizon) (sort-in (car horizon) old_frontier))
+(define (get-new-frontier abs_targets old_frontier)
+	(if (> (length old_frontier) 10)
+		(get-new-frontier abs_targets (delete-last old_frontier)) 
+		(if (null? abs_targets) old_frontier
+			(get-new-frontier (cdr abs_targets) (sort-in (car abs_targets) old_frontier))	
+		)
 	)
 ) 
 
@@ -255,11 +295,13 @@
 ;TAKES: NEW TARGET, PREVIOUS FRONTIER (AS A LIST OF TARGETS)
 ;RETURNS: NEW FRONTIER WHICH INCLUDES NEW TARGET, SORTED BY DESIRABILITY
 (define (sort-in new_target old_frontier)
-	(if (null? old_frontier) new_target
-		(if (> (desire new_target) (desire (car old_frontier))) 
-			(append new_target (cdr old_frontier))
-			(append (car old_frontier) (sort-in new_target (cdr old_frontier)))
-		)		
+	(if (null? new_target) old_frontier
+		(if (null? old_frontier) (list new_target)
+			(if (> (desire new_target) (desire (car old_frontier))) 
+				(cons new_target (cdr old_frontier))
+				(cons (car old_frontier) (sort-in new_target (cdr old_frontier)))
+			)		
+		)
 	)
 )
 
@@ -276,6 +318,14 @@
 	)	
 )
 
+(define (delete-last list)
+	(if (null? list) '()
+		(if (not (null? (cdr list))) 
+			(cons (car list) (delete-last (cdr list)))
+			'()
+		)
+	)
+)
 
 
 ;--------------------------

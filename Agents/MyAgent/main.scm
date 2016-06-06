@@ -25,12 +25,18 @@
 ;take over.
 (define (choose-action current_energy previous_events percept)
 	(begin
+		(display (car percept))
+		(display "\n")
 		(let
-			((new_loch (get-new-position previous_events last_position)))
+			(
+				(new_loch (get-new-position previous_events last_position))
+				(new_frontier (get-new-frontier (get-targets percept) frontier))
+				;(new_frontier '())	
+			)
 			
 			(begin
 				(set! last_position (car new_loch))
-				;SET NEW FRONTIER DOWN HERE.
+				(set! frontier new_frontier)
 			)
 		)
 		(display current_energy)
@@ -145,8 +151,10 @@
 ;then I can track them over multiple turns. This makes a couple of assumptions: first that an update algorithm will be
 ;relatively easy to write, and second, that a simple navigation algorithm will be able to turn target data into a
 ;good move.
-(define (get-new-frontier percept previous_events old_frontier new_heading)
-  ("NOTHING FOR NOW!")
+(define (get-new-frontier horizon old_frontier)
+	(if (null? horizon) old_frontier
+		(get-new-frontier (cdr horizon) (sort-in (car horizon) old_frontier))
+	)
 ) 
 
 ;TAKES: PERCEPT
@@ -173,6 +181,7 @@
 				)
 				(cond
 					((equal? 'empty current) (get-row-targets (cdr row) y))
+					((equal? 'barrier current) (get-row-targets (cdr row) y))
 					((equal? 'vegetation (car current)) (append (list (list (- (+ 1 y) (length row)) y (car (cdr (cdr current))))) (get-row-targets (cdr row) y)))
 					(else (get-row-targets (cdr row) y))
 				)
@@ -184,6 +193,7 @@
 				)
 				(cond
 					((equal? 'empty current) '())
+					((equal? 'barrier current) '())
 					((equal? 'vegetation (car current)) (list (list x y (car (cdr (cdr current))))))
 					(else '())
 				)
@@ -241,6 +251,32 @@
 		)
 	)
 )
+
+;TAKES: NEW TARGET, PREVIOUS FRONTIER (AS A LIST OF TARGETS)
+;RETURNS: NEW FRONTIER WHICH INCLUDES NEW TARGET, SORTED BY DESIRABILITY
+(define (sort-in new_target old_frontier)
+	(if (null? old_frontier) new_target
+		(if (> (desire new_target) (desire (car old_frontier))) 
+			(append new_target (cdr old_frontier))
+			(append (car old_frontier) (sort-in new_target (cdr old_frontier)))
+		)		
+	)
+)
+
+;TAKES: TARGET
+;RETURNS: INTEGER REPRSENTING THE DESIRABLILITY OF TARGET
+(define (desire target)
+	(let
+		(
+			(delta_x (- (car last_position) (car target)))
+			(delta_y (- (car (cdr last_position)) (car (cdr target))))
+			(target_value (car (cdr (cdr target))))
+		)
+		(/ target_value (* 10 (sqrt (+ (* delta_x delta_x) (* delta_y delta_y))))) ;This is the ratio of the target's energy to the energy it would take to get there 
+	)	
+)
+
+
 
 ;--------------------------
 ;  MISC. HELPER FUNCTIONS

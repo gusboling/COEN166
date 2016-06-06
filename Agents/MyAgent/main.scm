@@ -7,6 +7,7 @@
 ;  PERMANENT VARIABLES
 ;-----------------------
 (define last_position '(0 0))
+(define heading 'N)
 (define frontier '())
 
 ;-----------------
@@ -16,18 +17,30 @@
 
 ;For now, moves forward 1 space if it can. If it can't, then Agent turns to the right.
 (define (choose-action current_energy previous_events percept)
-  (if (not (equal? (get-move1 percept) 'empty)) "TURN-RIGHT"
-    (begin
-      (if (equal? (car previous_events) '(moved 1))
-        (set! last_position ((car last_position) (+ (car (cdr last_position)) 1)))
-        (set! last_position last_position)
-      )
-      (display last_position)
-      ("MOVE-PASSIVE-1")
-    )
-  )
+	(begin
+		(let
+			((new_loch (get-new-position previous_events last_position)))
+			
+			(begin
+				(display new_loch)
+				(set! last_position (car new_loch))
+			)
+		)
+		(cond
+			((equal? 'empty (get-move1 percept)) "MOVE-PASSIVE-1")
+			(else (turn-right heading))
+		)
+	)
 )
 
+(define (turn-right direction)
+	(cond
+		((equal? direction 'N) (begin (set! heading 'E) "TURN-RIGHT"))
+		((equal? direction 'E) (begin (set! heading 'S) "TURN-RIGHT"))
+		((equal? direction 'S) (begin (set! heading 'W) "TURN-RIGHT"))
+		((equal? direction 'W) (begin (set! heading 'N) "TURN-RIGHT"))
+	)
+)
 
 
 ;------------------------------
@@ -57,11 +70,7 @@
 ;relatively easy to write, and second, that a simple navigation algorithm will be able to turn target data into a
 ;good move (assuming the target is good, so three assumptions I guess).
 (define (get-frontier percept previous_events)
-  (let
-    (
-      (current_position (get-position previous_events))
-    )
-  )
+  ("NOTHING FOR NOW!")
 )
 
 
@@ -99,13 +108,32 @@
 )
 
 ;TAKES: A LIST OF ACTIONS PREVIOUSLY TAKEN
-;RETURNS: CURRENT HEADING AND DIRECTION.
+;RETURNS: CURRENT HEADING AND LOCATION.
 ;
 ;DEV_NOTE: Right now I'm envisioning a convention as follows: the space the agent starts at is treated like (0,0). All move-actions are treated like
 ;transformations on this coordinate based on the agent's heading. The heading is similarly assumed to start facing "North", with all other compass
 ;directions implied from the original heading. Turn-actions will cause the heading to be adjusted accordingly. Thus, this functions just traces steps.
-(define (get-position prev_even)
-  ("NOTHING FOR NOW")
+(define (get-new-position prev_events prev_loc)
+	(if (null? prev_events) (list prev_loc heading) ;Base case - return previous location unaltered if no actions have been taken.
+		(cond
+			((equal? (car prev_events) '(moved 1)) (list (position-change 1 prev_loc) heading))
+			((equal? (car prev_events) '(moved 2)) (list (position-change 2 prev_loc) heading))
+			((equal? (car prev_events) '(moved 3)) (list (position-change 3 prev_loc) heading))
+			(#t (get-new-position (cdr prev_events) prev_loc))
+		)
+	) 
+)
+
+;TAKES: An (x,y) coordinate-pair, and the number of spaces moved. The coordinate pair represents the starting location.
+;RETURNS: A new (x,y) coordinate-pair, representing a move of <move_spaces> spaces from the starting location, in
+;the present direction.
+(define (position-change move_spaces prev_position)
+	(cond
+		((equal? heading 'N) (list (car prev_position) (+ (car (cdr prev_position)) move_spaces)))
+		((equal? heading 'S) (list (car prev_position) (- (car (cdr prev_position)) move_spaces)))
+		((equal? heading 'E) (list (+ (car prev_position) move_spaces) (car (cdr prev_position))))
+		((equal? heading 'W) (list (- (car prev_position) move_spaces) (car (cdr prev_position)))) 
+	)
 )
 
 
